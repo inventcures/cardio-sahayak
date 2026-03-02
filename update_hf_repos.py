@@ -5,7 +5,8 @@ api = HfApi()
 
 repos = [
     "tp53/cardio-sahayak",
-    "tp53/cardio-sahayak-vlm"
+    "tp53/cardio-sahayak-vlm",
+    "tp53/cardio-sahayak-gguf"
 ]
 
 for repo_id in repos:
