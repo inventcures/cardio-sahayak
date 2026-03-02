@@ -85,12 +85,10 @@ def convert_to_gguf():
     del model, base_model, merged_model
     torch.cuda.empty_cache()
 
-    print("
-Step 2: Setting up llama.cpp")
+    print("\nStep 2: Setting up llama.cpp")
     run_cmd(["git", "clone", "--depth", "1", "https://github.com/ggerganov/llama.cpp.git", "/tmp/llama.cpp"], "Clone llama.cpp")
     
-    print("
-Step 3: Converting to FP16 GGUF")
+    print("\nStep 3: Converting to FP16 GGUF")
     gguf_output_dir = "/tmp/gguf_output"
     os.makedirs(gguf_output_dir, exist_ok=True)
     
@@ -100,20 +98,17 @@ Step 3: Converting to FP16 GGUF")
     convert_script = "/tmp/llama.cpp/convert_hf_to_gguf.py"
     run_cmd([sys.executable, convert_script, merged_dir, "--outfile", f16_gguf, "--outtype", "f16"], "Convert to F16 GGUF")
 
-    print("
-Step 4: Building quantize tool")
+    print("\nStep 4: Building quantize tool")
     run_cmd(["cmake", "-B", "/tmp/llama.cpp/build", "-S", "/tmp/llama.cpp", "-DGGML_CUDA=OFF"], "CMake Config")
     run_cmd(["cmake", "--build", "/tmp/llama.cpp/build", "--target", "llama-quantize", "-j", "4"], "Build quantize")
 
     quantize_bin = "/tmp/llama.cpp/build/bin/llama-quantize"
 
-    print("
-Step 5: Quantizing to Q4_K_M (Recommended for 27B on consumer hardware)")
+    print("\nStep 5: Quantizing to Q4_K_M (Recommended for 27B on consumer hardware)")
     q4_gguf = f"{gguf_output_dir}/{model_name}-q4_k_m.gguf"
     run_cmd([quantize_bin, f16_gguf, q4_gguf, "Q4_K_M"], "Quantize Q4_K_M")
 
-    print("
-Step 6: Uploading to Hugging Face Hub")
+    print("\nStep 6: Uploading to Hugging Face Hub")
     api = HfApi()
     
     try:
