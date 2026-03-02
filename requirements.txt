@@ -1,0 +1,8 @@
+gradio
+transformers>=4.45.0
+peft>=0.7.0
+accelerate
+bitsandbytes
+torch
+Pillow
+huggingface_hub

@@ -31,7 +31,7 @@ This project builds upon the state-of-the-art **MedGemma-27B** backbone, adaptin
 
 - **Instruction Dataset:** `tp53/cardio-sahayak-india-instruct-v0`
 - **Vision Dataset:** `PULSE-ECG/ECGBench` (ptb-test-report subset)
-- **Model Weights (Private):**
+- **Model Weights (Public - CC-BY-4.0 with Attribution):**
   - Text Adapters: `tp53/cardio-sahayak`
   - VLM Adapters: `tp53/cardio-sahayak-vlm`
 
