@@ -1,0 +1,6 @@
+.env
+__pycache__/
+*.pyc
+venv/
+.modal.toml
+cardio-sahayak-output/
