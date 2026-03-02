@@ -7,9 +7,9 @@ app = modal.App("cardio-sahayak-gguf-converter")
 # 2. Define the Image with all dependencies for conversion
 image = (
     modal.Image.debian_slim(python_version="3.11")
-    .apt_install("git", "build-essential", "cmake")
+    .apt_install("git", "build-essential", "cmake", "sed")
     .pip_install(
-        "transformers>=4.48.0", # Ensure recent transformers for Gemma3
+        "transformers>=4.48.0",
         "peft>=0.7.0",
         "torch>=2.0.0",
         "accelerate>=0.24.0",
@@ -61,7 +61,6 @@ def convert_to_gguf():
     os.makedirs(merged_dir, exist_ok=True)
 
     print("Step 1: Loading base model and merging adapters...")
-    # Load with trust_remote_code=True for Gemma3 if needed
     base_model = AutoModelForCausalLM.from_pretrained(
         BASE_MODEL,
         torch_dtype=torch.float16,
@@ -70,23 +69,16 @@ def convert_to_gguf():
         trust_remote_code=True
     )
     
-    print(f"Model class: {type(base_model)}")
-    
-    print("Loading adapter...")
-    model = PeftModel.from_pretrained(base_model, ADAPTER_MODEL, token=hf_token)
-    
     print("Merging and unloading...")
+    model = PeftModel.from_pretrained(base_model, ADAPTER_MODEL, token=hf_token)
     merged_model = model.merge_and_unload()
     
-    # Check if it's a Gemma3 model with a language_model attribute
+    # Extract language_model for Gemma3
     if hasattr(merged_model, "language_model"):
-        print("Detected Gemma3 VLM structure. Extracting language_model for GGUF conversion...")
+        print("Extracting language_model...")
         text_model = merged_model.language_model
-        # We need to save it such that it looks like a standard Gemma2 model
         text_model.save_pretrained(merged_dir, safe_serialization=True)
         
-        # Create a compatible Gemma2 config
-        # MedGemma-27B is actually Gemma-2-27B under the hood
         text_config = merged_model.config.text_config
         config_dict = text_config.to_dict()
         config_dict["architectures"] = ["Gemma2ForCausalLM"]
@@ -95,23 +87,27 @@ def convert_to_gguf():
         config_path = os.path.join(merged_dir, "config.json")
         with open(config_path, "w") as f:
             json.dump(config_dict, f, indent=2)
-            
-        print("Saved extracted text model with Gemma2 config.")
     else:
-        print("Standard model structure detected.")
         merged_model.save_pretrained(merged_dir, safe_serialization=True)
 
     tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL, token=hf_token)
     tokenizer.save_pretrained(merged_dir)
     
-    # Free memory
     del model, base_model, merged_model
     torch.cuda.empty_cache()
 
     print("\nStep 2: Setting up llama.cpp")
     run_cmd(["git", "clone", "--depth", "1", "https://github.com/ggerganov/llama.cpp.git", "/tmp/llama.cpp"], "Clone llama.cpp")
     
-    print("\nStep 3: Converting to FP16 GGUF")
+    print("\nStep 3: Patching llama.cpp for Gemma3 pre-tokenizer...")
+    # This sed command replaces the NotImplementedError with a return "gemma"
+    patch_script = """
+sed -i 's/raise NotImplementedError("BPE pre-tokenizer was not recognized - update get_vocab_base_pre()") /return "gemma" # /' /tmp/llama.cpp/convert_hf_to_gguf.py
+"""
+    # Note: We use a more flexible regex to catch the line even with slight whitespace variations
+    run_cmd(["sed", "-i", 's/raise NotImplementedError("BPE pre-tokenizer was not recognized - update get_vocab_base_pre()")/return "gemma"/g', "/tmp/llama.cpp/convert_hf_to_gguf.py"], "Patch llama.cpp vocab")
+
+    print("\nStep 4: Converting to FP16 GGUF")
     gguf_output_dir = "/tmp/gguf_output"
     os.makedirs(gguf_output_dir, exist_ok=True)
     
@@ -119,42 +115,27 @@ def convert_to_gguf():
     f16_gguf = f"{gguf_output_dir}/{model_name}-f16.gguf"
     
     convert_script = "/tmp/llama.cpp/convert_hf_to_gguf.py"
-    # Note: Using merged_dir which now contains the stripped Gemma2-style model
     run_cmd([sys.executable, convert_script, merged_dir, "--outfile", f16_gguf, "--outtype", "f16"], "Convert to F16 GGUF")
 
-    print("\nStep 4: Building quantize tool")
+    print("\nStep 5: Building quantize tool")
     run_cmd(["cmake", "-B", "/tmp/llama.cpp/build", "-S", "/tmp/llama.cpp", "-DGGML_CUDA=OFF"], "CMake Config")
     run_cmd(["cmake", "--build", "/tmp/llama.cpp/build", "--target", "llama-quantize", "-j", "4"], "Build quantize")
 
     quantize_bin = "/tmp/llama.cpp/build/bin/llama-quantize"
 
-    print("\nStep 5: Quantizing to Q4_K_M")
+    print("\nStep 6: Quantizing to Q4_K_M")
     q4_gguf = f"{gguf_output_dir}/{model_name}-q4_k_m.gguf"
     run_cmd([quantize_bin, f16_gguf, q4_gguf, "Q4_K_M"], "Quantize Q4_K_M")
 
-    print("\nStep 6: Uploading to Hugging Face Hub")
+    print("\nStep 7: Uploading to Hugging Face Hub")
     api = HfApi()
-    
-    try:
-        api.create_repo(repo_id=OUTPUT_REPO, repo_type="model", exist_ok=True, private=False)
-    except Exception as e:
-        print(f"Repo creation notice: {e}")
+    api.create_repo(repo_id=OUTPUT_REPO, repo_type="model", exist_ok=True, private=False)
 
     print("Uploading Q4_K_M GGUF...")
-    api.upload_file(
-        path_or_fileobj=q4_gguf,
-        path_in_repo=f"{model_name}-q4_k_m.gguf",
-        repo_id=OUTPUT_REPO,
-        token=hf_token
-    )
+    api.upload_file(path_or_fileobj=q4_gguf, path_in_repo=f"{model_name}-q4_k_m.gguf", repo_id=OUTPUT_REPO, token=hf_token)
     
     print("Uploading FP16 GGUF...")
-    api.upload_file(
-        path_or_fileobj=f16_gguf,
-        path_in_repo=f"{model_name}-f16.gguf",
-        repo_id=OUTPUT_REPO,
-        token=hf_token
-    )
+    api.upload_file(path_or_fileobj=f16_gguf, path_in_repo=f"{model_name}-f16.gguf", repo_id=OUTPUT_REPO, token=hf_token)
 
     print("✅ GGUF Conversion and Upload Complete!")
 
