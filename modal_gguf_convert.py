@@ -5,12 +5,11 @@ import modal
 app = modal.App("cardio-sahayak-gguf-converter")
 
 # 2. Define the Image with all dependencies for conversion
-# Requires build-essential and cmake for llama.cpp
 image = (
     modal.Image.debian_slim(python_version="3.11")
     .apt_install("git", "build-essential", "cmake")
     .pip_install(
-        "transformers>=4.45.0",
+        "transformers>=4.48.0", # Ensure recent transformers for Gemma3
         "peft>=0.7.0",
         "torch>=2.0.0",
         "accelerate>=0.24.0",
@@ -25,18 +24,18 @@ image = (
 )
 
 # 3. Define the Conversion Function
-# Using A100-80GB to ensure enough VRAM and RAM to merge 27B model
 @app.function(
     image=image,
     gpu="A100-80GB", 
-    timeout=86400, # Can take a while to clone, build, merge, and convert
+    timeout=86400,
     secrets=[modal.Secret.from_name("huggingface-secret")],
 )
 def convert_to_gguf():
     import sys
     import torch
     import subprocess
-    from transformers import AutoModelForCausalLM, AutoTokenizer
+    import json
+    from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
     from peft import PeftModel
     from huggingface_hub import HfApi, login
 
@@ -62,12 +61,16 @@ def convert_to_gguf():
     os.makedirs(merged_dir, exist_ok=True)
 
     print("Step 1: Loading base model and merging adapters...")
+    # Load with trust_remote_code=True for Gemma3 if needed
     base_model = AutoModelForCausalLM.from_pretrained(
         BASE_MODEL,
-        torch_dtype=torch.float16, # Use float16 for merging
+        torch_dtype=torch.float16,
         device_map="auto",
-        token=hf_token
+        token=hf_token,
+        trust_remote_code=True
     )
+    
+    print(f"Model class: {type(base_model)}")
     
     print("Loading adapter...")
     model = PeftModel.from_pretrained(base_model, ADAPTER_MODEL, token=hf_token)
@@ -75,9 +78,29 @@ def convert_to_gguf():
     print("Merging and unloading...")
     merged_model = model.merge_and_unload()
     
-    print("Saving merged model temporarily...")
-    merged_model.save_pretrained(merged_dir, safe_serialization=True)
-    
+    # Check if it's a Gemma3 model with a language_model attribute
+    if hasattr(merged_model, "language_model"):
+        print("Detected Gemma3 VLM structure. Extracting language_model for GGUF conversion...")
+        text_model = merged_model.language_model
+        # We need to save it such that it looks like a standard Gemma2 model
+        text_model.save_pretrained(merged_dir, safe_serialization=True)
+        
+        # Create a compatible Gemma2 config
+        # MedGemma-27B is actually Gemma-2-27B under the hood
+        text_config = merged_model.config.text_config
+        config_dict = text_config.to_dict()
+        config_dict["architectures"] = ["Gemma2ForCausalLM"]
+        config_dict["model_type"] = "gemma2"
+        
+        config_path = os.path.join(merged_dir, "config.json")
+        with open(config_path, "w") as f:
+            json.dump(config_dict, f, indent=2)
+            
+        print("Saved extracted text model with Gemma2 config.")
+    else:
+        print("Standard model structure detected.")
+        merged_model.save_pretrained(merged_dir, safe_serialization=True)
+
     tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL, token=hf_token)
     tokenizer.save_pretrained(merged_dir)
     
@@ -96,6 +119,7 @@ def convert_to_gguf():
     f16_gguf = f"{gguf_output_dir}/{model_name}-f16.gguf"
     
     convert_script = "/tmp/llama.cpp/convert_hf_to_gguf.py"
+    # Note: Using merged_dir which now contains the stripped Gemma2-style model
     run_cmd([sys.executable, convert_script, merged_dir, "--outfile", f16_gguf, "--outtype", "f16"], "Convert to F16 GGUF")
 
     print("\nStep 4: Building quantize tool")
@@ -104,7 +128,7 @@ def convert_to_gguf():
 
     quantize_bin = "/tmp/llama.cpp/build/bin/llama-quantize"
 
-    print("\nStep 5: Quantizing to Q4_K_M (Recommended for 27B on consumer hardware)")
+    print("\nStep 5: Quantizing to Q4_K_M")
     q4_gguf = f"{gguf_output_dir}/{model_name}-q4_k_m.gguf"
     run_cmd([quantize_bin, f16_gguf, q4_gguf, "Q4_K_M"], "Quantize Q4_K_M")
 
@@ -112,7 +136,7 @@ def convert_to_gguf():
     api = HfApi()
     
     try:
-        api.create_repo(repo_id=OUTPUT_REPO, repo_type="model", exist_ok=True, private=True)
+        api.create_repo(repo_id=OUTPUT_REPO, repo_type="model", exist_ok=True, private=False)
     except Exception as e:
         print(f"Repo creation notice: {e}")
 
