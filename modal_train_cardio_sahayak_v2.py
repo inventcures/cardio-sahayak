@@ -35,7 +35,7 @@ def train():
     from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
     from trl import SFTTrainer, SFTConfig
     import trackio
-    from huggingface_hub import login
+    from huggingface_hub import login, HfApi
 
     # Ensure HF Token is set
     hf_token = os.environ.get("HF_TOKEN")
@@ -47,7 +47,7 @@ def train():
     previous_adapter_id = "tp53/cardio-sahayak" # Resume from our previous fine-tune
     dataset_id = "tp53/cardio-sahayak-india-instruct-v2"
     output_dir = "cardio-sahayak-v2-output" # Local dir in container
-    hub_model_id = "tp53/cardio-sahayak-v2"  # Target HF repo
+    hub_model_id = "tp53/cardio-sahayak"  # Target HF repo
 
     print(f"Loading dataset: {dataset_id}")
     dataset = load_dataset(dataset_id)
@@ -143,9 +143,7 @@ def train():
     # Training Arguments
     args = SFTConfig(
         output_dir=output_dir,
-        push_to_hub=True,
-        hub_model_id=hub_model_id,
-        hub_private_repo=False,
+        push_to_hub=False,
         num_train_epochs=3,
         per_device_train_batch_size=2,
         gradient_accumulation_steps=4,
@@ -186,8 +184,17 @@ def train():
     print("Starting Phase 2 training...")
     trainer.train()
 
-    print(f"Pushing final model to {hub_model_id}")
-    trainer.push_to_hub()
+    print(f"Saving final model locally to {output_dir}")
+    trainer.save_model(output_dir)
+    
+    print(f"Pushing final model to {hub_model_id} under 'v2_weights' folder...")
+    api = HfApi()
+    api.upload_folder(
+        folder_path=output_dir,
+        repo_id=hub_model_id,
+        path_in_repo="v2_weights",
+        token=hf_token
+    )
     print("Training and push complete!")
 
 @app.local_entrypoint()
