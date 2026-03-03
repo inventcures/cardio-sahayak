@@ -43,8 +43,8 @@ def shift_phenotype(input_file="data/raw_datasets/western_vignettes_sample.jsonl
     if not os.path.exists(input_file):
         os.makedirs(os.path.dirname(input_file), exist_ok=True)
         with open(input_file, "w") as f:
-            f.write(json.dumps({"text": "Patient is a 55-year-old Caucasian male presenting with acute chest pain. BMI is 29. No significant family history of early heart disease."}) + "\\n")
-            f.write(json.dumps({"text": "60-year-old female with suspected hypertrophic cardiomyopathy. Echo shows septal hypertrophy. BMI 26."}) + "\\n")
+            f.write(json.dumps({"text": "Patient is a 55-year-old Caucasian male presenting with acute chest pain. BMI is 29. No significant family history of early heart disease."}) + "\n")
+            f.write(json.dumps({"text": "60-year-old female with suspected hypertrophic cardiomyopathy. Echo shows septal hypertrophy. BMI 26."}) + "\n")
             
     print(f"Reading from {input_file}...")
     
