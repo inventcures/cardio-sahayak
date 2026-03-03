@@ -1,1 +1,3 @@
-{"id": "IND_ECG_001", "type": "Normal", "url": "https://ihub-data.iiit.ac.in/datasets/ecg/001.pdf"}\n{"id": "IND_ECG_002", "type": "MI", "url": "https://ihub-data.iiit.ac.in/datasets/ecg/002.pdf"}\n{"id": "IND_ECG_003", "type": "AFib", "url": "https://ihub-data.iiit.ac.in/datasets/ecg/003.pdf"}\n
+{"id": "IND_ECG_001", "type": "Normal", "url": "https://ihub-data.iiit.ac.in/datasets/ecg/001.pdf"}
+{"id": "IND_ECG_002", "type": "MI", "url": "https://ihub-data.iiit.ac.in/datasets/ecg/002.pdf"}
+{"id": "IND_ECG_003", "type": "AFib", "url": "https://ihub-data.iiit.ac.in/datasets/ecg/003.pdf"}

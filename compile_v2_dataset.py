@@ -15,24 +15,12 @@ def compile_v2():
     def load_jsonl_robust(filepath):
         results = []
         with open(filepath, "r", encoding="utf-8") as f:
-            content = f.read()
-            # Replace literal \n with actual newline for splitting
-            content = content.replace('\\n', '\n')
-            # Split by common JSON object boundaries
-            parts = content.split('}\n{')
-            if len(parts) == 1:
-                parts = content.split('}{')
-            
-            for i, part in enumerate(parts):
-                if not part.strip(): continue
-                # Reconstruct the valid JSON string
-                if i > 0: part = '{' + part
-                if i < len(parts) - 1: part = part + '}'
-                
+            for line in f:
+                if not line.strip(): continue
                 try:
-                    results.append(json.loads(part))
+                    results.append(json.loads(line))
                 except json.JSONDecodeError as e:
-                    pass
+                    print(f"Error decoding line in {filepath}: {e}")
         return results
 
     # 1. Ingest Eka Clinical Notes

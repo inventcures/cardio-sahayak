@@ -26,7 +26,7 @@ def scrape_ihub_data_portal():
     
     with open(metadata_path, "w") as f:
         for file in mock_files:
-            f.write(json.dumps(file) + "\\n")
+            f.write(json.dumps(file) + "\n")
             
     print("In a full production run, this script would:")
     print("1. Use BeautifulSoup/Selenium to navigate the IHub portal.")
@@ -51,7 +51,7 @@ def scrape_scienceopen_ecg():
     
     with open(metadata_path, "w") as f:
         for file in mock_files:
-            f.write(json.dumps(file) + "\\n")
+            f.write(json.dumps(file) + "\n")
 
 if __name__ == "__main__":
     scrape_ihub_data_portal()

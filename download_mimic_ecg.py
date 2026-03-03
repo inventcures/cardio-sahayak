@@ -24,7 +24,7 @@ def download_mimic_sample():
     metadata_path = os.path.join(output_dir, "metadata.jsonl")
     with open(metadata_path, "w") as f:
         for record in mock_records:
-            f.write(json.dumps(record) + "\\n")
+            f.write(json.dumps(record) + "\n")
             
     print(f"Generated sample records at {metadata_path}")
     print("Next step: Use wfdb.plot_wfdb() to convert these waveforms to 896x896 images for MedSigLIP.")
@@ -48,7 +48,7 @@ def clone_meeti_dataset():
     
     with open(os.path.join(mock_data_dir, "metadata.jsonl"), "w") as f:
         for file in mock_files:
-            f.write(json.dumps(file) + "\\n")
+            f.write(json.dumps(file) + "\n")
             
     print("Generated mock MEETI integration point.")
 

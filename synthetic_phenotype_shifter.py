@@ -79,7 +79,7 @@ def shift_phenotype(input_file="data/raw_datasets/western_vignettes_sample.jsonl
                     "source": "synthetic_phenotype_shift"
                 }
                 
-                outfile.write(json.dumps(output_data) + "\\n")
+                outfile.write(json.dumps(output_data) + "\n")
                 # Sleep briefly to avoid rate limits
                 time.sleep(1)
                 
