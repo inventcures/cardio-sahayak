@@ -7,33 +7,37 @@
 
 ## Project Overview
 
-This project builds upon the state-of-the-art **MedGemma-27B** backbone, adapting it through:
-1. **Text Supervised Fine-Tuning (SFT):** Fine-tuning on specialized instruction sets integrating Indian National Consensus on Cardiology guidelines and South Asian genetic contexts.
-2. **Multimodal VLM Training:** Adapting the MedGemma architecture with **MedSigLIP** vision encoders to analyze 12-lead ECG images and output rigorous clinical reports.
+This project builds upon the state-of-the-art **MedGemma-27B** backbone, adapting it through a rigorous two-phase training methodology:
+1. **Phase 1 (General Medical Reasoning):** Text and Multimodal SFT integrating Indian National Consensus on Cardiology guidelines and MedSigLIP vision encoders for 12-lead ECG analysis.
+2. **Phase 2 (South Asian Contextualization):** Resumed fine-tuning on a curated 166-record *V2 Dataset* integrating real-world Indian clinical notes (EkaCare), Gemini-driven synthetic phenotype shifts, and multimodal scanned ECG references to deeply embed the "South Asian Phenotype" (e.g., lower BMI thresholds, MYBPC3 Δ25bp genetic markers).
 
-## Architecture
+## Architecture & Deployment
 
-- **Base Model:** `google/medgemma-27b-it`
+- **Base Model:** `google/medgemma-27b-it` (Gemma3 VLM Architecture)
 - **Vision Encoder:** `google/medsiglip-448`
-- **Quantization:** 4-bit NormalFloat (NF4) via bitsandbytes
-- **Fine-Tuning Strategy:** QLoRA
+- **Fine-Tuning Strategy:** Two-Phase QLoRA (4-bit NormalFloat via bitsandbytes)
 - **Compute:** Modal.com (`A100-80GB` GPUs)
+- **Edge Deployment:** We developed a runtime architectural patch to convert the complex Gemma3 language model into a highly compressed **Q4_K_M GGUF (16.6 GB)** format using `llama.cpp`, enabling fully offline subspecialist AI on standard clinical laptops.
 
 ## Repository Structure
 
-- `data_prep_indian_cardio.py`: Generates the Hugging Face dataset containing cardiology instruction pairs tailored for the Indian demographic.
-- `finetune_cardio_sahayak.py` / `modal_train_cardio_sahayak.py`: Scripts for fine-tuning the text-only MedGemma backbone.
-- `modal_train_vlm_cardio_sahayak.py`: Multimodal instruction tuning script leveraging `PULSE-ECG/ECGBench` for ECG image understanding.
-- `vlm_ecg_inference.py`: Inference script for generating clinical reports from ECG images using the fine-tuned VLM.
-- `medsiglip_ecg_classifier.py`: Zero-shot ECG classification using MedSigLIP.
+- `data_prep_indian_cardio.py`: Generates the Phase 1 Hugging Face dataset.
+- `ingest_eka_notes.py`, `synthetic_phenotype_shifter.py`, `compile_v2_dataset.py`: Scripts used to generate the expanded Phase 2 V2 dataset.
+- `finetune_cardio_sahayak.py` / `modal_train_cardio_sahayak.py`: Scripts for Phase 1 fine-tuning.
+- `modal_train_cardio_sahayak_v2.py`: Phase 2 training script, resuming from Phase 1 adapters.
+- `modal_gguf_convert.py`: Automated Modal pipeline for patching and generating GGUF files.
+- `vlm_ecg_inference.py`: Inference script for generating clinical reports from ECG images.
 
 ## Datasets & Weights
 
-- **Instruction Dataset:** `tp53/cardio-sahayak-india-instruct-v0`
+- **Instruction Datasets:** 
+  - Phase 1: `tp53/cardio-sahayak-india-instruct-v0`
+  - Phase 2: `tp53/cardio-sahayak-india-instruct-v2`
 - **Vision Dataset:** `PULSE-ECG/ECGBench` (ptb-test-report subset)
 - **Model Weights (Public - CC-BY-4.0 with Attribution):**
-  - Text Adapters: `tp53/cardio-sahayak`
+  - Text Adapters (Phase 2): `tp53/cardio-sahayak` (in the `v2_weights/` subfolder)
   - VLM Adapters: `tp53/cardio-sahayak-vlm`
+  - GGUF Offline Weights: `tp53/cardio-sahayak-gguf`
 
 ## Quick Start
 
