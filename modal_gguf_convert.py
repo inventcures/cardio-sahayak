@@ -69,8 +69,9 @@ def convert_to_gguf():
         trust_remote_code=True
     )
     
-    print("Merging and unloading...")
-    model = PeftModel.from_pretrained(base_model, ADAPTER_MODEL, token=hf_token)
+    print("Merging and unloading (V2 Weights)...")
+    # Load adapter from the v2_weights subfolder
+    model = PeftModel.from_pretrained(base_model, ADAPTER_MODEL, subfolder="v2_weights", token=hf_token)
     merged_model = model.merge_and_unload()
     
     # Extract language_model for Gemma3
@@ -111,7 +112,7 @@ sed -i 's/raise NotImplementedError("BPE pre-tokenizer was not recognized - upda
     gguf_output_dir = "/tmp/gguf_output"
     os.makedirs(gguf_output_dir, exist_ok=True)
     
-    model_name = "cardio-sahayak"
+    model_name = "cardio-sahayak-v2"
     f16_gguf = f"{gguf_output_dir}/{model_name}-f16.gguf"
     
     convert_script = "/tmp/llama.cpp/convert_hf_to_gguf.py"
