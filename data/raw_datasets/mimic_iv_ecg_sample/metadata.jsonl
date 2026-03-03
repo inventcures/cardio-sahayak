@@ -1,0 +1,1 @@
+{"subject_id": "10000032", "study_id": "50000001", "waveform_path": "data/raw_datasets/mimic_iv_ecg_sample/waveform_1.dat", "diagnosis": "Sinus rhythm. Normal ECG."}\n{"subject_id": "10000032", "study_id": "50000002", "waveform_path": "data/raw_datasets/mimic_iv_ecg_sample/waveform_2.dat", "diagnosis": "Atrial fibrillation. Left ventricular hypertrophy."}\n
