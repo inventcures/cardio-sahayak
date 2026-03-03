@@ -40,7 +40,7 @@ def format_eka_dataset():
         if not transcript:
             continue
             
-        instruction = f"Analyze the following medical consultation transcript and generate a structured clinical note suitable for an Indian cardiology setting. Focus specifically on Cardiovascular Disease (CVD) indicators, early-onset risks, metabolic syndrome markers, and relevant cardiac family history. Pay attention to specific local terminologies or conditions if present.\n\nTranscript:\n{transcript}\n\nTarget Schema Context:\n{prompt_schema}"
+        instruction = f"Analyze the following medical consultation transcript and generate a structured clinical note suitable for an Indian cardiology setting. Focus specifically on Cardiovascular Disease (CVD) indicators, early-onset risks, metabolic syndrome markers, and relevant cardiac family history. Pay attention to specific local terminologies or conditions if present.\\n\\nTranscript:\\n{transcript}\\n\\nTarget Schema Context:\\n{prompt_schema}"
         
         formatted_item = {
             "instruction": instruction,
@@ -60,7 +60,7 @@ def format_eka_dataset():
     output_path = os.path.join(output_dir, "eka_formatted_notes.jsonl")
     with open(output_path, "w", encoding="utf-8") as f:
         for item in formatted_data:
-            f.write(json.dumps(item) + "\\n")
+            f.write(json.dumps(item) + "\n")
             
     print(f"Saved formatted dataset to {output_path}")
 

@@ -82,7 +82,7 @@ def compile_v2():
     print(f"Writing {len(compiled_data)} total records to V2 Dataset...")
     with open(v2_output_path, "w", encoding="utf-8") as f:
         for item in compiled_data:
-            f.write(json.dumps(item) + "\\n")
+            f.write(json.dumps(item) + "\n")
             
     print(f"Compilation Complete! V2 Dataset ready at: {v2_output_path}")
     print("\nNext Steps:")
