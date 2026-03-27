@@ -1,6 +1,6 @@
 # Cardio-Sahayak India 🇮🇳 🫀
 
-[![DeepWiki](https://img.shields.io/badge/DeepWiki-Indexed-blue.svg)](https://deepwiki.com)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/inventcures/cardio-sahayak)
 [![CodeWiki](https://img.shields.io/badge/CodeWiki-Indexed-green.svg)](https://codewiki.com)
 
 **Cardio-Sahayak India** is a specialized Large Language Model (LLM) and Vision-Language Model (VLM) designed for complex cardiology care, heavily optimized for the Indian population and its specific demographic factors (e.g., South Asian cardiac mutation markers).
